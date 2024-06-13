@@ -3,24 +3,23 @@ from transformers import pipeline
 from langchain_core.prompts import PromptTemplate
 from langchain_community.llms import OpenAI
 from langchain.chains import LLMChain
+from PIL import Image
 import streamlit as st
 import requests
 import os
-
 
 load_dotenv()
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 
 
 # img2text
-def image2text(url):
+def image2text(file):
     image_to_text = pipeline("image-to-text", model="Salesforce/blip-image-captioning-large")
-    text=image_to_text(url)[0]["generated_text"]
+    text=image_to_text(file)[0]["generated_text"]
     return text
 
 
 # llm
-
 def generate_story(scenario):
     template = """
     you are a storu teller;
@@ -46,10 +45,7 @@ def text2speech(message):
     }
 
     response = requests.post(API_URL, headers=headers, json=payload)
-    # print(response.content)
 
-    with open('audio.flac', 'wb') as file:
-        file.write(response.content)
     return response.content    
     
 
@@ -62,12 +58,9 @@ def main():
     uploaded_file = st.file_uploader('Choose an image...', type='jpg')
 
     if uploaded_file is not None:
-        byte_data = uploaded_file.getvalue()
-        with open(uploaded_file.name, 'wb') as file:
-            file.write(byte_data)
         st.image(uploaded_file, caption='Uploaded image.', use_column_width=True)
 
-        scenario = image2text(uploaded_file.name)
+        scenario = image2text(Image.open(uploaded_file))
         if scenario is not None:
             with st.expander("scenario"):
                 st.write(scenario)
@@ -84,7 +77,7 @@ def main():
                 if b'"error"' in audio:
                     st.error('text2speech model is spinning up, please try again in 5min')
                 else:    
-                    st.audio("audio.flac")
+                    st.audio(audio, format="audio/flac")
             else:
                 st.error('something wrong with text2speech model')    
 
